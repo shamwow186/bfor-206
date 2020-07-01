@@ -1,0 +1,93 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Apr 16 17:36:52 2020
+@author: skmaj
+"""
+
+
+import pandas as pd
+import numpy as np
+from matplotlib.pyplot import hist
+url = 'https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv'
+states = pd.read_csv(url, error_bad_lines=False)
+url = 'https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv'
+counties = pd.read_csv(url, error_bad_lines=False) 
+#Importing the github datasets 
+#%%Summarize the data
+#converts dates to a cleaner format
+states['date']=pd.to_datetime(states['date'])
+counties['date']=pd.to_datetime(counties['date'])
+
+#defines daily variable
+daily= states.groupby('date').sum()
+
+#percent changes, day-by-day
+daily['pct_chg_cases']=daily['cases'].pct_change()
+daily['pct_chg_deaths']=daily['deaths'].pct_change()
+daily.pct_chg_cases = (daily.pct_chg_cases * 100)
+daily.pct_chg_deaths = (daily.pct_chg_deaths * 100)
+
+# adds cfr column for states and counties
+states['cfr']=states['deaths']/states['cases']
+counties['cfr']=counties['deaths']/counties['cases']
+states.cfr = (states.cfr * 100)
+counties.cfr = (counties.cfr * 100)
+
+#replace inf values with nan values to ignore them
+states.replace([np.inf, -np.inf], np.nan,inplace=True)
+counties.replace([np.inf, -np.inf], np.nan,inplace=True)
+daily.replace([np.inf, -np.inf], np.nan,inplace=True)
+
+#average percent changes per day
+print('Percent change in cases:',daily['pct_chg_cases'].mean())
+print('Percent change in deaths:',daily['pct_chg_deaths'].mean())
+
+#display states with highest and lowest cfr
+print(states[states['cfr']==states['cfr'].max()])
+print(states[states['cfr']==states['cfr'].min()].tail(1))
+
+#display county with highest cfr
+print(counties[counties['cfr']==counties['cfr'].max()])
+#%%Visualize the data
+#plots the cases and deaths in the us for each day
+cases_deaths_plot=daily.plot(y=['cases', 'deaths'])
+cases_deaths_plot.set(title='Number of Cases/Deaths in the US per Day')
+cases_deaths_plot.get_figure()
+
+#adds cfr to daily data frame in order to plot daily
+daily['cfr']=daily['deaths']/daily['cases']
+
+#plots case fataility rate in the US each day
+cfr_plot=daily.plot(y=['cfr'])
+cfr_plot.set(title='CFR in the US per Day')
+cfr_plot.get_figure()
+
+#plots growth rate in the US
+growth_rate_plot=daily.plot(y=['pct_chg_cases'])
+growth_rate_plot.set(title='Growth Rate in the US per Day')
+growth_rate_plot.get_figure()
+
+#add pct chg column to counties and states dataframe as well as change pct to whole numbers
+states['pct_chg_cases']= (states.groupby('state')['cases'].pct_change())
+states.pct_chg_cases = (states.pct_chg_cases * 100)
+counties['pct_chg_cases']= (counties.groupby('county')['cases'].pct_change())
+counties.pct_chg_cases = (counties.pct_chg_cases * 100)
+
+#plot growth rate of cases 
+states_to_compare=['New York','Michigan', 'Washington']
+states['state'].isin(states_to_compare)
+states['pct_chg_cases'] >= 1
+state_sub_df=states[states['state'].isin(states_to_compare)&(states['pct_chg_cases']>=1)]
+state_growth_plot=state_sub_df.groupby(['date','state'])['pct_chg_cases'].sum().unstack().plot(logy=True)
+state_growth_plot.set(xlabel='Date', ylabel='Percentage of Cases', title='Growth Percentage of Cases in NY,MI,WA')
+state_growth_plot.get_figure()
+#%%Insigths from the data
+#Top 5 states with new cases
+print(states.sort_values(by=['date','cases']).tail(5))
+#Top 5 counties with new cases
+print(counties.sort_values(by=['date','cases']).tail(5))
+#Top 5 states with greatest percent change in cases
+print(states.sort_values(by=['date','pct_chg_cases']).tail(5))
+#Top 5 counties with greatest percent change in cases
+counties['pct_chg_cases']=counties['pct_chg_cases'].fillna(0)
+print(counties.sort_values(by=['date','pct_chg_cases']).tail(5))
