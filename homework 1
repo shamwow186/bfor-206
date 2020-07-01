@@ -1,0 +1,33 @@
+#!/bin/bash
+#######################################################################
+#this script will check network devices to see if they are functioning 
+#if they are available on the network. It will log all of the 
+#pings timestamps. If something is not working the scrip will
+#send the administrator an email
+##########################################################################
+
+#define the ping function 
+ping_function () { 
+        ping -c 3 amazon.com
+        ping -c 3 google.com
+        ping -c 3 67.54.87.1
+}
+
+echo "The program has started"
+
+returned=$(ping_function) #puts the results of the fucntion into a variable 
+
+echo "$returned" "$(date)" |grep -e"statistics" -e"packets" -e"EST" >> /logs/pinglog.log  #pipe echo 
+# and grep to only display lines with  statistics, packets, and EST (timestamps)
+
+echo "$returned" 
+#calls the function in order to test it with the if statement 
+
+if echo "$returned" | grep -q "100% packet loss"
+#checks result of the ping command 
+
+then echo "One of your IP addresses is not responding to pings." | mail -s "IP Addresses" kali@kali.local
+#this will email my local kali email 
+
+fi
+echo "The program has complete"
